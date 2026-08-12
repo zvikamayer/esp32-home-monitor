@@ -13,10 +13,6 @@
         "speedtests": {
           ".read": true,
           ".write": true
-        },
-        "flow": {
-          ".read": true,
-          ".write": true
         }
       }
     },

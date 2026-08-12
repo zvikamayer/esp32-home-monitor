@@ -9,70 +9,6 @@
 #include <time.h>
 #include "secrets.h"
 
-// ---- מד ספיקה (חיישן זרימת מים) - הוספה זמנית, אפשר למחוק את כל הבלוקים
-// המסומנים ב-ENABLE_FLOW_METER אם לא צריך יותר ----
-#define ENABLE_FLOW_METER 1
-
-#if ENABLE_FLOW_METER
-#include <Preferences.h>
-
-const int FLOW_SENSOR_PIN = 27; // TODO: התאימי לפין שאליו מחובר חיישן הספיקה בפועל
-
-// פולסים לליטר - תלוי בדגם החיישן! למשל YF-S201 = 450, YF-B1 = 660.
-// יש לבדוק בדאטה-שיט של החיישן הספציפי ולעדכן כאן בהתאם.
-const float PULSES_PER_LITER = 450.0;
-
-const unsigned long FLOW_REPORT_INTERVAL_MS = 15000; // כל כמה זמן לדווח ספיקה
-
-Preferences flowPrefs;
-volatile unsigned long pulseCount = 0;
-unsigned long lastFlowReport = 0;
-double totalLiters = 0;
-
-void IRAM_ATTR onFlowPulse() {
-  pulseCount++;
-}
-
-void setupFlowMeter() {
-  pinMode(FLOW_SENSOR_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN), onFlowPulse, FALLING);
-
-  // שומרים את הצבירה הכוללת בזיכרון לא-נדיף, כדי שלא תאופס בכל אתחול/הפסקת חשמל
-  flowPrefs.begin("flowmeter", false);
-  totalLiters = flowPrefs.getDouble("totalLiters", 0.0);
-}
-
-bool reportFlow() {
-  if (WiFi.status() != WL_CONNECTED) return false;
-
-  noInterrupts();
-  unsigned long pulses = pulseCount;
-  pulseCount = 0;
-  interrupts();
-
-  double liters = pulses / PULSES_PER_LITER;
-  totalLiters += liters;
-  flowPrefs.putDouble("totalLiters", totalLiters);
-
-  double minutes = FLOW_REPORT_INTERVAL_MS / 60000.0;
-  double rateLpm = liters / minutes;
-
-  HTTPClient http;
-  String url = String(FIREBASE_HOST) + "/devices/" + DEVICE_ID + "/flow.json";
-  http.begin(url);
-  http.addHeader("Content-Type", "application/json");
-
-  String payload = "{";
-  payload += "\"rateLpm\":" + String(rateLpm, 3) + ",";
-  payload += "\"totalLiters\":" + String(totalLiters, 3);
-  payload += "}";
-
-  int code = http.PATCH(payload);
-  http.end();
-  return code == 200;
-}
-#endif
-
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;           // כל כמה זמן לשלוח פעימה
 const unsigned long SPEEDTEST_INTERVAL_MS = 5UL * 60 * 1000; // כל 5 דקות - בדיקת מהירות אינטרנט
 const unsigned long WIFI_CONNECT_TIMEOUT_MS = 15000;
@@ -214,10 +150,6 @@ void setup() {
   bootMillis = millis();
   connectWiFi();
   if (WiFi.status() == WL_CONNECTED) syncTime();
-
-#if ENABLE_FLOW_METER
-  setupFlowMeter();
-#endif
 }
 
 void loop() {
@@ -237,14 +169,6 @@ void loop() {
     bool ok = measureAndReportSpeed();
     Serial.println(ok ? "בדיקת מהירות דווחה בהצלחה" : "בדיקת מהירות נכשלה");
   }
-
-#if ENABLE_FLOW_METER
-  if (millis() - lastFlowReport >= FLOW_REPORT_INTERVAL_MS) {
-    lastFlowReport = millis();
-    bool ok = reportFlow();
-    Serial.println(ok ? "דיווח ספיקה נשלח" : "דיווח ספיקה נכשל");
-  }
-#endif
 
   delay(200);
 }
