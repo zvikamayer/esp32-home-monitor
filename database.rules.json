@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "devices": {
+      "$device": {
+        "status": {
+          ".read": true,
+          ".write": true
+        },
+        "alertState": {
+          ".read": true,
+          ".write": true
+        },
+        "speedtests": {
+          ".read": true,
+          ".write": true
+        },
+        "flow": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    },
+    ".read": false,
+    ".write": false
+  }
+}

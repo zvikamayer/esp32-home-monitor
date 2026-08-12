@@ -1,0 +1,13 @@
+{
+  "name": "esp32-home-monitor-watchdog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "בודק שה-ESP32 הביתי עדיין מדווח, ושולח התראות בטלגרם/מייל אם לא",
+  "main": "check.js",
+  "scripts": {
+    "check": "node check.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.14"
+  }
+}
