@@ -83,7 +83,9 @@
 
   <div class="card">
     <h2>מהירות אינטרנט - 24 שעות אחרונות</h2>
+    <div class="row"><span>מדידה אחרונה</span><span id="latestSpeed">-</span></div>
     <div class="chart-wrap"><canvas id="speedChart"></canvas></div>
+    <div class="note">הגרף מוצג ב-Mbps (מגה-ביט לשנייה) - זו הדרך המקובלת שספקי אינטרנט מודדים מהירות. כדי להמיר ל-MB/s (מגה-בייט לשנייה, כמו בהורדת קבצים) - מחלקים ב-8.</div>
     <div class="actions">
       <button id="reportBtn">📥 הורדת דוח חודש אחרון (CSV)</button>
     </div>
@@ -165,6 +167,11 @@
     );
     const data = points.map((p) => p.mbps);
 
+    const latest = points[points.length - 1];
+    document.getElementById("latestSpeed").textContent = latest
+      ? `${latest.mbps.toFixed(1)} Mbps (${(latest.mbps / 8).toFixed(1)} MB/s)`
+      : "-";
+
     if (speedChart) {
       speedChart.data.labels = labels;
       speedChart.data.datasets[0].data = data;
@@ -195,7 +202,14 @@
           x: { ticks: { color: "#94a3b8", maxTicksLimit: 8 }, grid: { color: "#334155" } },
           y: { ticks: { color: "#94a3b8" }, grid: { color: "#334155" }, beginAtZero: true },
         },
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.y.toFixed(1)} Mbps (${(ctx.parsed.y / 8).toFixed(1)} MB/s)`,
+            },
+          },
+        },
       },
     });
   }
@@ -217,10 +231,11 @@
     const monthAgo = Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
     fetchSpeedRange(monthAgo)
       .then((points) => {
-        let csv = "﻿תאריך ושעה,Mbps,Ping (ms)\n";
+        let csv = "﻿תאריך ושעה,Mbps,MB/s,Ping (ms)\n";
         points.forEach((p) => {
           const dateStr = new Date(p.ts * 1000).toLocaleString("he-IL");
-          csv += `${dateStr},${p.mbps ?? ""},${p.pingMs ?? ""}\n`;
+          const mbs = typeof p.mbps === "number" ? (p.mbps / 8).toFixed(2) : "";
+          csv += `${dateStr},${p.mbps ?? ""},${mbs},${p.pingMs ?? ""}\n`;
         });
 
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
