@@ -7,6 +7,7 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <time.h>
+#include <ArduinoOTA.h>
 #include "secrets.h"
 
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;           // כל כמה זמן לשלוח פעימה
@@ -145,17 +146,42 @@ bool measureAndReportSpeed() {
   return putCode == 200;
 }
 
+// מאפשר להעלות קוד חדש דרך הוויפי (Sketch -> Upload Using: Network Port ב-
+// Arduino IDE), בלי USB. עובד רק כשהמחשב שממנו מעלים נמצא באותה רשת כמו הבקר.
+void setupOTA() {
+  ArduinoOTA.setHostname(DEVICE_ID);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+
+  ArduinoOTA
+    .onStart([]() { Serial.println("OTA: מתחיל עדכון..."); })
+    .onEnd([]() { Serial.println("OTA: הסתיים בהצלחה"); })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("OTA: %u%%\n", (progress * 100) / total);
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("OTA: שגיאה [%u]\n", error);
+    });
+
+  ArduinoOTA.begin();
+  Serial.println("OTA מוכן - אפשר להעלות דרך הוויפי");
+}
+
 void setup() {
   Serial.begin(115200);
   bootMillis = millis();
   connectWiFi();
-  if (WiFi.status() == WL_CONNECTED) syncTime();
+  if (WiFi.status() == WL_CONNECTED) {
+    syncTime();
+    setupOTA();
+  }
 }
 
 void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     connectWiFi();
   }
+
+  ArduinoOTA.handle();
 
   if (millis() - lastHeartbeat >= HEARTBEAT_INTERVAL_MS) {
     lastHeartbeat = millis();
