@@ -52,9 +52,25 @@
   }
   button:hover { background: #0ea5e9; }
   button:disabled { opacity: .5; cursor: default; }
+  .clock {
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .clock-date {
+    font-size: 14px;
+    color: #94a3b8;
+    margin-top: 4px;
+  }
 </style>
 </head>
 <body>
+  <div class="card" style="text-align: center;">
+    <div id="clock" class="clock">--:--:--</div>
+    <div id="clockDate" class="clock-date">-</div>
+  </div>
+
   <div class="card">
     <h1>ניטור ESP32 - בית</h1>
     <div id="statusLine" class="status"><span class="dot"></span><span id="statusText">טוען...</span></div>
@@ -73,13 +89,6 @@
     </div>
   </div>
 
-  <div class="card">
-    <h2>מד ספיקה - זרימת מים</h2>
-    <div class="row"><span>ספיקה נוכחית</span><span id="flowRate">-</span></div>
-    <div class="row"><span>סה"כ מים שנמדדו</span><span id="flowTotal">-</span></div>
-    <div class="note">שדה זמני - יוסר או יורחב בהתאם לצורך.</div>
-  </div>
-
 <script>
   // מלא כאן את פרטי פרויקט ה-Firebase שלך (מ-Project settings -> General)
   const firebaseConfig = {
@@ -90,6 +99,20 @@
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
+
+  // ---- שעון חי ----
+  function updateClock() {
+    const now = new Date();
+    document.getElementById("clock").textContent = now.toLocaleTimeString("he-IL");
+    document.getElementById("clockDate").textContent = now.toLocaleDateString("he-IL", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
 
   const DEVICE_ID = "esp32_home";
   const STALE_THRESHOLD_SEC = 180; // צריך להתאים למספר ב-watchdog/check.js
@@ -116,16 +139,6 @@
   }
 
   db.ref("devices/" + DEVICE_ID + "/status").on("value", (snap) => render(snap.val()));
-
-  // ---- מד ספיקה - הצגה זמנית ----
-  function renderFlow(flow) {
-    document.getElementById("flowRate").textContent =
-      flow && typeof flow.rateLpm === "number" ? flow.rateLpm.toFixed(2) + " ל'/דקה" : "-";
-    document.getElementById("flowTotal").textContent =
-      flow && typeof flow.totalLiters === "number" ? flow.totalLiters.toFixed(1) + " ליטר" : "-";
-  }
-
-  db.ref("devices/" + DEVICE_ID + "/flow").on("value", (snap) => renderFlow(snap.val()));
 
   // ---- גרף מהירות אינטרנט (24 שעות אחרונות) ----
   const speedCtx = document.getElementById("speedChart").getContext("2d");
