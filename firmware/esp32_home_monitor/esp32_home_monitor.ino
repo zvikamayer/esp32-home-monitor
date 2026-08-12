@@ -105,7 +105,9 @@ bool measureAndReportSpeed() {
 
   WiFiClient *stream = https.getStreamPtr();
   size_t totalRead = 0;
-  uint8_t buf[512];
+  // באפר גדול יותר (היה 512 בייט) + בלי השהיה מלאכותית בין קריאות -
+  // באפר קטן מדי ו-delay() מיותר האטו את המדידה בהרבה מתחת למהירות האמיתית.
+  static uint8_t buf[4096];
   unsigned long downloadStart = millis();
 
   while (https.connected() && totalRead < SPEEDTEST_BYTES) {
@@ -116,8 +118,6 @@ bool measureAndReportSpeed() {
       totalRead += n;
     } else if (!https.connected()) {
       break;
-    } else {
-      delay(5);
     }
   }
   unsigned long elapsedMs = millis() - downloadStart;
